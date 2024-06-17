@@ -27,7 +27,33 @@ class KDTree():
         else:
             result += f"{indent}None\n"
         return result
+    
+    def _inorder_traversal(self, result):
+        if self.point is None:
+            return
+        if self.left is not None:
+            self.left._inorder_traversal(result)
+        result.append(self.point)
+        if self.right is not None:
+            self.right._inorder_traversal(result)
 
+    def balance_tree(self):
+        nodes = []
+        self._inorder_traversal(nodes)
+        self.point = None
+        self.left = None
+        self.right = None
+        self._balance_tree(nodes, 0, len(nodes) - 1)
+    
+    def _balance_tree(self, nodes, start, end):
+        if start > end:
+            return
+        mid = (start + end) // 2
+        self.point = nodes[mid]
+        # self.left = KDTree()
+        self.left._balance_tree(nodes, start, mid - 1)
+        # self.right = KDTree()
+        self.right._balance_tree(nodes, mid + 1, end)
     
     def _nearest_exclude(self, root, point, depth, best, exclude_labels):
         if root is None:
