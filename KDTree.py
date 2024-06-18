@@ -28,33 +28,6 @@ class KDTree():
             result += f"{indent}None\n"
         return result
     
-    def _inorder_traversal(self, result):
-        if self.point is None:
-            return
-        if self.left is not None:
-            self.left._inorder_traversal(result)
-        result.append(self.point)
-        if self.right is not None:
-            self.right._inorder_traversal(result)
-
-    def balance_tree(self):
-        nodes = []
-        self._inorder_traversal(nodes)
-        self.point = None
-        self.left = None
-        self.right = None
-        self._balance_tree(nodes, 0, len(nodes) - 1)
-    
-    def _balance_tree(self, nodes, start, end):
-        if start > end:
-            return
-        mid = (start + end) // 2
-        self.point = nodes[mid]
-        # self.left = KDTree()
-        self.left._balance_tree(nodes, start, mid - 1)
-        # self.right = KDTree()
-        self.right._balance_tree(nodes, mid + 1, end)
-    
     def _nearest_exclude(self, root, point, depth, best, exclude_labels):
         if root is None:
             return best
@@ -135,67 +108,3 @@ def get_lowest_path_with_kdtree_greedy(cities: list, tree: KDTree, start=0):
     total_distance += distance(current_point, start_point)
 
     return path, total_distance
-
-# def get_lowest_path_greedy(cities):
-#     # start = random.randint(0, len(cities) - 1)
-#     start = 0
-#     cities = cities.copy()
-#     path = [cities.pop(start)]
-#     while cities:
-#         # if len(cities) % 100 == 0: print(len(cities))
-#         last_city = path[-1]
-#         next_city = min(cities, key=lambda city: distance(last_city, city))
-#         path.append(cities.pop(cities.index(next_city)))
-#     return path
-
-# def main():
-#     import random
-#     import time
-#     CIDADES = []
-#     with open('data.txt') as data:
-#         next(data)
-#         for line in data:
-#             x, y, name = line.strip().split()
-#             CIDADES.append((float(x), float(y), name))
-
-#     # CIDADES = random.sample(CIDADES, 50)
-
-#     tree = KDTree()
-#     for cidade in CIDADES:
-#         tree.insert(cidade)
-
-#     start = time.time()
-#     for i in range(20):
-#         min_path = get_lowest_path_greedy(CIDADES)
-#     t1 = time.time() - start
-#     start = time.time()
-#     for i in range(20):
-#         min_path_kdtree = get_lowest_path_with_kdtree(CIDADES, tree)
-#     t2 = time.time() - start
-
-#     exclude = set()
-#     point = (3, 6, 'A')
-#     while True:
-#         if point is None:
-#             break
-#         exclude.add(point[2])
-#         print(point)
-#         point = tree.nearest_neighbor(point, exclude_labels=exclude)
-#     # print(tree.nearest_neighbor((2, 7, 'F'), exclude_labels={'A', 'F'}))
-
-#     print('------------------------')
-#     # print(min_path)
-#     # print(min_path_kdtree)
-#     # check if the paths are the same
-#     for p1, p2 in zip(min_path, min_path_kdtree):
-#         if p1[2] != p2[2]:
-#             print('Different paths')
-#             break
-#     print('Same paths')
-#     print('Greedy time: ', t1)
-#     print('KDTree time: ', t2)
-#     # print(tree)
-
-
-# if __name__ == "__main__":
-#     main()

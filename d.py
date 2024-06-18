@@ -5,16 +5,18 @@ from matplotlib.collections import LineCollection
 import random
 import heapq
 import time
+import sys
+import imageio
 
 CIDADES = []
-POPULATION_SIZE = 10
+POPULATION_SIZE = 4
 SAMPLE_SIZE = 2000
 
 PLOT = True
 
-MAX_K = 10
+MAX_K = 120
 
-CROSS_OVER_QUANTITY = 5
+CROSS_OVER_QUANTITY = 10
 MUTATION_QUANTITY = 10
 
 SKIP = 1
@@ -26,7 +28,7 @@ START = time.time()
 
 CURR_BEST_PATH = None
 
-with open('caso50fixed.txt') as f:
+with open('data.txt') as f:
     next(f)
     for line in f:
         x, y, label = line.strip().split(' ')
@@ -39,7 +41,7 @@ with open('caso50fixed.txt') as f:
 
     CIDADES = random.sample(CIDADES, SAMPLE_SIZE)
     
-    with open('cidades.txt', 'w') as f:
+    with open('result.txt', 'w') as f:
         for x, y, label in CIDADES:
             f.write(f'{x} {y} {label}\n')
 
@@ -47,7 +49,7 @@ with open('caso50fixed.txt') as f:
     print(KD_Tree)
 
 
-def plot_population(population):
+def plot_population(population, gen=0, best_cost=0):
     x_coords = [point[0] for point in population]
     y_coords = [point[1] for point in population]
 
@@ -64,7 +66,7 @@ def plot_population(population):
     plt.gca().invert_yaxis()
     plt.xlabel('X')
     plt.ylabel('Y')
-    plt.title('Gráfico de Pontos com Conexões')
+    plt.title(f'\nTraveling Salesman Problem\nGenetic Algorithm\nGen: {gen}\nBest Cost: {best_cost:.2f}\nTime: {time.time() - START:.0f} seconds')
     plt.grid(False)
 
     plt.draw()
@@ -134,8 +136,7 @@ def mutation(path):
 # @timeit
 def make_mutations(population):
     new_population = []
-    # create mutations for 10% of the population
-    to_mutate = random.sample(range(len(population)), len(population) // 10)
+    to_mutate = random.sample(range(len(population)), len(population))
     
     for pos in  to_mutate:
         new_population.append(mutation(population[pos]))
@@ -221,7 +222,6 @@ def generate_population():
 
 
 
-import multiprocessing as mp
 def genetic_algorithm():
     global START, CURR_BEST_PATH
     last = 0
@@ -231,7 +231,7 @@ def genetic_algorithm():
     for gen in range(100000000000000):
         selection(population)
         
-        # population += make_mutations(population)
+        population += make_mutations(population)
         # population += make_random_population(4)
         # population += make_test(population, 1)
         population += make_mutations_nearest_neighbor(population)
@@ -251,10 +251,10 @@ def genetic_algorithm():
             last = current
             # print('=============')
             CURR_BEST_PATH = max(population, key=lambda val: val[0])[1]
-            yield CURR_BEST_PATH
+            yield CURR_BEST_PATH, current, gen
             
         
-import sys
+
 
 def main():
     
@@ -265,15 +265,20 @@ def main():
         fig.canvas.manager.window.wm_geometry("+0+0")
         fig.canvas.manager.window.wm_geometry(f"-{3000}+0")
 
+    frames = []
+    
     def update(frame):
-        nonlocal print_time
+        nonlocal print_time, frames
         
         if frame[0] is None:
             if time.time() - print_time > 10:
                 print_time = time.time()
                 print(frame[1], f'{(time.time() - START)/60:.2f}min  {frame[2]}gen')
             return
-        plot_population(frame)
+        plot_population(frame[0], gen=frame[2], best_cost=frame[1])
+        
+        plt.savefig('plot.png')
+        frames.append(imageio.imread('plot.png'))
     
     try:
         if PLOT:
@@ -289,6 +294,7 @@ def main():
         with open('result.txt', 'w') as f:
             for x, y, label in CURR_BEST_PATH:
                 f.write(f'{x} {y} {label}\n')
+        imageio.mimsave('result.gif', frames, duration=0.2)
 
 
 if __name__ == '__main__':
