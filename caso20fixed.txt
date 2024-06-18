@@ -1,0 +1,21 @@
+20
+96.63 63.19 Cidade1
+24.59 21.35 Cidade2
+71.1 41.44 Cidade3
+53.35 5.93 Cidade4
+65.56 59.99 Cidade5
+82.37 46.93 Cidade6
+10.79 46.32 Cidade7
+54.1 32.57 Cidade8
+72.3 89.33 Cidade9
+16.39 69.23 Cidade10
+89.12 23.16 Cidade11
+28.04 3.37 Cidade12
+57.18 47.53 Cidade13
+59.59 69.33 Cidade14
+93.37 31.75 Cidade15
+83.06 17.28 Cidade16
+6.61 71.88 Cidade17
+10.29 52.47 Cidade18
+19.4 92.36 Cidade19
+61.04 50.29 Cidade20
