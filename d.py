@@ -1,21 +1,47 @@
 from KDTree import KDTree, distance as get_distance, get_lowest_path_with_kdtree_greedy
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.collections import LineCollection
 import random
 import heapq
+import time
 
 CIDADES = []
-POPULATION_SIZE = 30
+POPULATION_SIZE = 10
+SAMPLE_SIZE = 2000
+
+PLOT = True
+
+MAX_K = 10
+
+CROSS_OVER_QUANTITY = 5
+MUTATION_QUANTITY = 10
+
+SKIP = 1
 
 KD_Tree = KDTree()
 
-with open('data.txt') as f:
+START = time.time()
+
+
+CURR_BEST_PATH = None
+
+with open('caso50fixed.txt') as f:
     next(f)
     for line in f:
         x, y, label = line.strip().split(' ')
         CIDADES.append((float(x), float(y), label))
 
-    CIDADES = random.sample(CIDADES, 2000)
+    if SAMPLE_SIZE > len(CIDADES):
+        SAMPLE_SIZE = len(CIDADES)
+    if MAX_K > len(CIDADES):
+        MAX_K = len(CIDADES)
+
+    CIDADES = random.sample(CIDADES, SAMPLE_SIZE)
+    
+    with open('cidades.txt', 'w') as f:
+        for x, y, label in CIDADES:
+            f.write(f'{x} {y} {label}\n')
 
     KD_Tree.insert_list(CIDADES)
     print(KD_Tree)
@@ -24,24 +50,25 @@ with open('data.txt') as f:
 def plot_population(population):
     x_coords = [point[0] for point in population]
     y_coords = [point[1] for point in population]
-    labels = [point[2] for point in population]
 
     plt.clf()  # Clear the current figure
-    plt.scatter(x_coords, y_coords, color='blue', s=10)
-    for i in range(len(population) - 1):
-        plt.annotate('', xy=(x_coords[i + 1], y_coords[i + 1]), xytext=(x_coords[i], y_coords[i]),
-                     arrowprops=dict(arrowstyle="->", lw=0.7, color='red'))
+    plt.scatter(x_coords, y_coords, color='blue', s=5)
 
-    plt.annotate('', xy=(x_coords[0], y_coords[0]), xytext=(x_coords[-1], y_coords[-1]),
-                 arrowprops=dict(arrowstyle="->", lw=0.7, color='blue'))
-        
+    # Create line segments for faster plotting, excluding labels
+    segments = [((x_coords[i], y_coords[i]), (x_coords[i + 1], y_coords[i + 1])) for i in range(len(population) - 1)]
+    segments.append(((x_coords[-1], y_coords[-1]), (x_coords[0], y_coords[0])))  # Close the loop
+
+    line_segments = LineCollection(segments, color='red', linewidths=0.7, linestyle='-')
+    plt.gca().add_collection(line_segments)
 
     plt.gca().invert_yaxis()
-
     plt.xlabel('X')
     plt.ylabel('Y')
-    plt.title(f'Gráfico de Pontos com Conexões')
+    plt.title('Gráfico de Pontos com Conexões')
     plt.grid(False)
+
+    plt.draw()
+
 
 def timeit(func):
     import time
@@ -88,7 +115,7 @@ def crossover(parent1, parent2):
 # @timeit
 def make_cross_overs(population):
     new_population = []
-    for i in range(0, len(population), 2):
+    for i in range(0, len(population), 2*2):
         if i + 1 == len(population):
             break
         new_population.append(crossover(population[i], population[i + 1]))
@@ -114,6 +141,33 @@ def make_mutations(population):
         new_population.append(mutation(population[pos]))
     
     return new_population
+
+
+def mutate_nearest_neighbor(path, k=1):
+    path = path[1].copy()
+    p1 = random.randint(0, len(path) - 1 - k)
+    exclude_labels = {path[p1][2]}
+    for _ in range(k):
+        p2 = KD_Tree.nearest_neighbor(path[p1], exclude_labels=exclude_labels)
+        p2 = path.index(p2)
+        # print(p1, p2)
+        path[p1+1], path[p2] = path[p2], path[p1+1]
+        p1 = p1 + 1
+        exclude_labels.add(path[p1][2])
+    
+    path_distance = path_cost(path)
+    return (-path_distance, path)
+
+def make_mutations_nearest_neighbor(population):
+    new_population = []
+    to_mutate = random.sample(range(len(population)), len(population))
+    # print(to_mutate)
+    for pos in to_mutate:
+        for _ in range(MUTATION_QUANTITY):
+            k = random.randint(1, MAX_K)
+            new_population.append(mutate_nearest_neighbor(population[pos], k))
+    return new_population
+
 
 def selection(population):
     # print('--- SELECTION ---')
@@ -169,47 +223,72 @@ def generate_population():
 
 import multiprocessing as mp
 def genetic_algorithm():
+    global START, CURR_BEST_PATH
     last = 0
     population = generate_population()
-        
-    for i in range(100000000000000):
+    timer_acc = time.time()
+
+    for gen in range(100000000000000):
         selection(population)
         
-        new_population_1 =  make_mutations(population)
-        new_population_2 =  make_random_population(4)
-        new_population_3 =  make_test(population, 1)
-        new_population_4 =  make_cross_overs(population)
-        new_population_5 =  make_mutations(population)
+        # population += make_mutations(population)
+        # population += make_random_population(4)
+        # population += make_test(population, 1)
+        population += make_mutations_nearest_neighbor(population)
+        population += make_cross_overs(population)
+        population += make_mutations(population)
         
-        population = population + new_population_1 + new_population_3 + new_population_4 + new_population_5
-        # print(population)
-        # print(max(population, key=lambda val: val[0])[0])
         current = max(population, key=lambda val: val[0])[0]
         minu = min(population, key=lambda val: val[0])[0]
-        if i % 10 == 0:
-            print(i)
-            print(int(current), int(minu))
-        if current != last:
+        
+        if time.time() - timer_acc > 2:
+            timer_acc = time.time()
+            yield None, current, gen
+        
+        if current != last and gen % SKIP == 0:
+            print('--- YIELD ---')
             print(current)
             last = current
+            # print('=============')
+            CURR_BEST_PATH = max(population, key=lambda val: val[0])[1]
+            yield CURR_BEST_PATH
             
         
-
+import sys
 
 def main():
-    genetic_algorithm()
-    # only_names = lambda val: val[2]
-    # population = generate_population()
-    # p1, p2 = population[0], population[1]
-    # print(list(map(only_names, p1[1])))
     
-    # print(list(map(only_names, p2[1])))
+    print_time = time.time()
     
-    # p3 = crossover(p1, p2)
-    # print(list(map(only_names, p3[1])))
+    if PLOT:
+        fig = plt.figure(figsize=(10, 8))
+        fig.canvas.manager.window.wm_geometry("+0+0")
+        fig.canvas.manager.window.wm_geometry(f"-{3000}+0")
+
+    def update(frame):
+        nonlocal print_time
+        
+        if frame[0] is None:
+            if time.time() - print_time > 10:
+                print_time = time.time()
+                print(frame[1], f'{(time.time() - START)/60:.2f}min  {frame[2]}gen')
+            return
+        plot_population(frame)
     
-    
-    pass
+    try:
+        if PLOT:
+            ani = animation.FuncAnimation(fig, update, frames=genetic_algorithm(), repeat=False, interval=200)
+            plt.show()
+        else:
+            for x in genetic_algorithm():
+                pass
+        
+    except:
+        pass
+    finally:
+        with open('result.txt', 'w') as f:
+            for x, y, label in CURR_BEST_PATH:
+                f.write(f'{x} {y} {label}\n')
 
 
 if __name__ == '__main__':
