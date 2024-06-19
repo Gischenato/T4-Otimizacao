@@ -9,21 +9,24 @@ import sys
 import imageio
 
 CIDADES = []
-POPULATION_SIZE = 4
+POPULATION_SIZE = 1
 SAMPLE_SIZE = 2000
 
-PLOT = True
 
-MAX_K = 120
+MAX_K = 6
 
-CROSS_OVER_QUANTITY = 10
-MUTATION_QUANTITY = 10
+CROSS_OVER_QUANTITY = 2
+NEAREST_PATH_MUTATION_QUANTITY = 5
+RANDOM_MUTATION_QUANTITY = 2
 
 SKIP = 1
 
 KD_Tree = KDTree()
 
 START = time.time()
+
+PLOT = True
+TIME_IT = False
 
 
 CURR_BEST_PATH = None
@@ -34,19 +37,19 @@ with open('data.txt') as f:
         x, y, label = line.strip().split(' ')
         CIDADES.append((float(x), float(y), label))
 
+    CIDADES = random.sample(CIDADES, SAMPLE_SIZE)
+
     if SAMPLE_SIZE > len(CIDADES):
         SAMPLE_SIZE = len(CIDADES)
     if MAX_K > len(CIDADES):
-        MAX_K = len(CIDADES)
-
-    CIDADES = random.sample(CIDADES, SAMPLE_SIZE)
+        MAX_K = len(CIDADES) - len(CIDADES) // 10
     
     with open('result.txt', 'w') as f:
         for x, y, label in CIDADES:
             f.write(f'{x} {y} {label}\n')
 
     KD_Tree.insert_list(CIDADES)
-    print(KD_Tree)
+    # print(KD_Tree)
 
 
 def plot_population(population, gen=0, best_cost=0):
@@ -73,8 +76,11 @@ def plot_population(population, gen=0, best_cost=0):
 
 
 def timeit(func):
+    global TIME_IT
     import time
     def wrapper(*args, **kwargs):
+        if not TIME_IT:
+            return func(*args, **kwargs)
         start = time.time()
         result = func(*args, **kwargs)
         print(f'{func.__name__} took {time.time() - start} seconds')
@@ -93,9 +99,9 @@ def crossover(parent1, parent2):
     parent2 = parent2[1]
     size = len(parent1)
     
-    p1, p2 = sorted(random.sample(range(size), 2))
+    p1, p2 = sorted(random.sample(range(size//10), 2))
     p2 += 1
-    
+
     child = [None] * size
     child[p1:p2] = parent1[p1:p2]
     
@@ -114,7 +120,7 @@ def crossover(parent1, parent2):
     path_distance = path_cost(child)
     return (-path_distance, child)
 
-# @timeit
+@timeit
 def make_cross_overs(population):
     new_population = []
     for i in range(0, len(population), 2*2):
@@ -133,13 +139,14 @@ def mutation(path):
     
     return (-path_distance, path)
 
-# @timeit
+@timeit
 def make_mutations(population):
     new_population = []
     to_mutate = random.sample(range(len(population)), len(population))
     
-    for pos in  to_mutate:
-        new_population.append(mutation(population[pos]))
+    for pos in to_mutate:
+        for i in range(RANDOM_MUTATION_QUANTITY):
+            new_population.append(mutation(population[pos]))
     
     return new_population
 
@@ -159,12 +166,13 @@ def mutate_nearest_neighbor(path, k=1):
     path_distance = path_cost(path)
     return (-path_distance, path)
 
+@timeit
 def make_mutations_nearest_neighbor(population):
     new_population = []
     to_mutate = random.sample(range(len(population)), len(population))
     # print(to_mutate)
     for pos in to_mutate:
-        for _ in range(MUTATION_QUANTITY):
+        for _ in range(NEAREST_PATH_MUTATION_QUANTITY):
             k = random.randint(1, MAX_K)
             new_population.append(mutate_nearest_neighbor(population[pos], k))
     return new_population
@@ -209,10 +217,14 @@ def make_test(population, n):
         new_population.append(test(parent2))
     return new_population
 
+@timeit
 def generate_population():
     population = []
     print('Generating Population')
+    curr = 0
     for i in random.sample(range(len(CIDADES)), POPULATION_SIZE):
+        print(curr)
+        curr += 1
         # path, cost = get_lowest_path_with_kdtree_greedy(CIDADES, KD_Tree, start=i)
         path = get_random_path(CIDADES)
         cost = path_cost(path)
@@ -233,7 +245,7 @@ def genetic_algorithm():
         
         population += make_mutations(population)
         # population += make_random_population(4)
-        # population += make_test(population, 1)
+        population += make_test(population, 1)
         population += make_mutations_nearest_neighbor(population)
         population += make_cross_overs(population)
         population += make_mutations(population)
@@ -263,7 +275,7 @@ def main():
     if PLOT:
         fig = plt.figure(figsize=(10, 8))
         fig.canvas.manager.window.wm_geometry("+0+0")
-        fig.canvas.manager.window.wm_geometry(f"-{3000}+0")
+        fig.canvas.manager.window.wm_geometry(f"-{0}+0")
 
     frames = []
     
@@ -286,6 +298,11 @@ def main():
             plt.show()
         else:
             for x in genetic_algorithm():
+                if x[0] is None:
+                    print(x[1], f'{(time.time() - START)/60:.2f}min  {x[2]}gen')
+                    # if time.time() - print_time > 10:
+                    #     print_time = time.time()
+                    #     print(x[1], f'{(time.time() - START)/60:.2f}min  {x[2]}gen')
                 pass
         
     except:
