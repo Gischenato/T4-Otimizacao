@@ -10,10 +10,10 @@ import imageio
 
 CIDADES = []
 POPULATION_SIZE = 1
-SAMPLE_SIZE = 2000
+SAMPLE_SIZE = 40
 
 
-MAX_K = 6
+MAX_K = 150
 
 CROSS_OVER_QUANTITY = 2
 NEAREST_PATH_MUTATION_QUANTITY = 5
@@ -25,13 +25,16 @@ KD_Tree = KDTree()
 
 START = time.time()
 
-PLOT = True
+PLOT = False
 TIME_IT = False
 
 
 CURR_BEST_PATH = None
 
-with open('data.txt') as f:
+
+PROBS = []
+
+with open('40.txt') as f:
     next(f)
     for line in f:
         x, y, label = line.strip().split(' ')
@@ -43,7 +46,7 @@ with open('data.txt') as f:
         SAMPLE_SIZE = len(CIDADES)
     if MAX_K > len(CIDADES):
         MAX_K = len(CIDADES) - len(CIDADES) // 10
-    
+
     with open('result.txt', 'w') as f:
         for x, y, label in CIDADES:
             f.write(f'{x} {y} {label}\n')
@@ -123,7 +126,7 @@ def crossover(parent1, parent2):
 @timeit
 def make_cross_overs(population):
     new_population = []
-    for i in range(0, len(population), 2*2):
+    for i in range(0, CROSS_OVER_QUANTITY, 2):
         if i + 1 == len(population):
             break
         new_population.append(crossover(population[i], population[i + 1]))
@@ -245,13 +248,13 @@ def genetic_algorithm():
         
         population += make_mutations(population)
         # population += make_random_population(4)
-        population += make_test(population, 1)
+        # population += make_test(population, 1)
         population += make_mutations_nearest_neighbor(population)
         population += make_cross_overs(population)
         population += make_mutations(population)
         
         current = max(population, key=lambda val: val[0])[0]
-        minu = min(population, key=lambda val: val[0])[0]
+        # minu = min(population, key=lambda val: val[0])[0]
         
         if time.time() - timer_acc > 2:
             timer_acc = time.time()
